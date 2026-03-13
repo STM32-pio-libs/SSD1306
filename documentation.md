@@ -7,6 +7,8 @@ It supports:
 - SPI transport (through a user callback)
 - Full-screen clear/fill
 - Full-frame bitmap drawing
+- Partial/windowed bitmap drawing
+- Display control (ON/OFF, invert, contrast, entire display ON)
 - Adapter callback for external graphics buffers
 
 The driver does not configure MCU peripherals itself. You provide low-level send functions.
@@ -130,6 +132,65 @@ Arguments:
 Returns:
 - `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
 
+### `int32_t OLED_DisplayOn(const OLED_Config *cfg, uint8_t on)`
+Turns panel output OFF/ON.
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `on`: `0` = display OFF, non-zero = display ON.
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
+### `int32_t OLED_SetInvert(const OLED_Config *cfg, uint8_t invert)`
+Controls normal vs inverse display mode.
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `invert`: `0` = normal (`A6`), non-zero = invert (`A7`).
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
+### `int32_t OLED_SetEntireDisplayOn(const OLED_Config *cfg, uint8_t enable)`
+Forces all pixels ON independent of GDDRAM (`A5`) or resumes RAM display (`A4`).
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `enable`: `0` = resume RAM display, non-zero = force all pixels ON.
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
+### `int32_t OLED_SetContrast(const OLED_Config *cfg, uint8_t contrast)`
+Sets SSD1306 contrast register (`0x00`..`0xFF`).
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `contrast`: 8-bit contrast value.
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
+### `int32_t OLED_SetAddressWindow(const OLED_Config *cfg, uint8_t column_start, uint8_t column_end, uint8_t page_start, uint8_t page_end)`
+Sets the active column/page window for following data writes.
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `column_start`: First column index.
+- `column_end`: Last column index (inclusive).
+- `page_start`: First page index.
+- `page_end`: Last page index (inclusive).
+
+Rules:
+- `column_start <= column_end`
+- `page_start <= page_end`
+- Indices must be inside configured geometry.
+- SSD1306 addressing uses 8-bit indices (`0..255`).
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
 ### `int32_t OLED_DrawBitmap(const OLED_Config *cfg, const uint8_t *bitmap, size_t length)`
 Draws a full frame buffer to display memory.
 
@@ -142,6 +203,24 @@ Requirements:
 - `bitmap != NULL`
 - `length == OLED_BufferSize(cfg)`
 - Page-oriented layout (8 vertical pixels per byte, LSB at top)
+
+Returns:
+- `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
+
+### `int32_t OLED_DrawBitmapRect(const OLED_Config *cfg, const uint8_t *bitmap, size_t length, uint8_t column_start, uint8_t column_end, uint8_t page_start, uint8_t page_end)`
+Draws data only inside a rectangular SSD1306 window.
+
+Arguments:
+- `cfg`: Pointer to a valid `OLED_Config`.
+- `bitmap`: Rectangle framebuffer in page layout.
+- `length`: Must match rectangle byte size.
+- `column_start`: Start column.
+- `column_end`: End column (inclusive).
+- `page_start`: Start page.
+- `page_end`: End page (inclusive).
+
+Length formula:
+- `length == (column_end - column_start + 1) * (page_end - page_start + 1)`
 
 Returns:
 - `OLED_OK`, `OLED_ERR_INVALID_ARG`, or `OLED_ERR_IO`.
@@ -172,13 +251,25 @@ Returns:
 - `OLED_Clear(&oled)`
 - `OLED_Fill(&oled, pattern)`
 - `OLED_DrawBitmap(&oled, framebuffer, framebuffer_size)`
+- `OLED_DrawBitmapRect(&oled, rect_buffer, rect_size, col_s, col_e, page_s, page_e)`
+6. Use control APIs when needed:
+- `OLED_DisplayOn(&oled, 0/1)`
+- `OLED_SetInvert(&oled, 0/1)`
+- `OLED_SetEntireDisplayOn(&oled, 0/1)`
+- `OLED_SetContrast(&oled, value)`
 
 For concrete code, use:
 - `examples/base_init_i2c.c`
 - `examples/base_init_spi.c`
 - `examples/draw_bitmap_i2c.c`
+- `examples/display_controls_i2c.c`
+- `examples/partial_update_i2c.c`
+- `src/main.c`
 
 ## Example Files
 - `examples/base_init_i2c.c`: base I2C initialization and fill
 - `examples/base_init_spi.c`: base SPI initialization and fill
 - `examples/draw_bitmap_i2c.c`: I2C + generated bitmap drawing
+- `examples/display_controls_i2c.c`: display ON/OFF, invert, contrast, entire display ON
+- `examples/partial_update_i2c.c`: partial/windowed updates with `OLED_DrawBitmapRect`
+- `src/main.c`: local demo sequence with control APIs + animated partial updates

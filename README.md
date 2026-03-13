@@ -7,12 +7,14 @@ Portable SSD1306 OLED driver for STM32 using STM32Cube HAL, with pluggable I2C/S
 - No hard dependency on a specific STM32 peripheral instance
 - Config-driven display setup through `OLED_Config`
 - Built-in SSD1306 initialization sequence
-- Full-screen operations:
-  - `OLED_Clear`
-  - `OLED_Fill`
-  - `OLED_DrawBitmap`
-- Graphics adapter:
-  - `OLED_GfxFlushCallback` for external framebuffer pipelines
+- Full-screen operations (`OLED_Clear`, `OLED_Fill`, `OLED_DrawBitmap`)
+- Partial updates via `OLED_DrawBitmapRect` and `OLED_SetAddressWindow`
+- Display control APIs:
+  - `OLED_DisplayOn`
+  - `OLED_SetInvert`
+  - `OLED_SetEntireDisplayOn`
+  - `OLED_SetContrast`
+- Graphics adapter (`OLED_GfxFlushCallback`) for external framebuffer pipelines
 
 ## Project Layout
 - `include/ssd1306.h`: public API
@@ -20,6 +22,9 @@ Portable SSD1306 OLED driver for STM32 using STM32Cube HAL, with pluggable I2C/S
 - `examples/base_init_i2c.c`: I2C transport example
 - `examples/base_init_spi.c`: SPI transport example
 - `examples/draw_bitmap_i2c.c`: I2C bitmap rendering example
+- `examples/display_controls_i2c.c`: display control API example
+- `examples/partial_update_i2c.c`: partial update example
+- `src/main.c`: local demo with controls + animated partial updates
 - `documentation.md`: detailed API/usage documentation
 
 ## Quick Start
@@ -27,7 +32,8 @@ Portable SSD1306 OLED driver for STM32 using STM32Cube HAL, with pluggable I2C/S
 2. Implement a transport callback (`OLED_SendI2CFn` or `OLED_SendSPIFn`).
 3. Fill `OLED_Config` with display size and callback.
 4. Call `OLED_Init(&oled)`.
-5. Render using `OLED_Clear`, `OLED_Fill`, or `OLED_DrawBitmap`.
+5. Render using `OLED_Clear`, `OLED_Fill`, `OLED_DrawBitmap`, or `OLED_DrawBitmapRect`.
+6. Use control APIs (`OLED_SetInvert`, `OLED_SetContrast`, `OLED_DisplayOn`) as needed.
 
 ### Minimal I2C Flow
 ```c
@@ -74,5 +80,7 @@ OLED_Config oled = {
 - For I2C, use SSD1306 7-bit address (`0x3C` is common).
 - For SPI, your callback should drive D/C (command/data select) and optionally CS.
 - `OLED_DrawBitmap` requires a full framebuffer of exactly `OLED_BufferSize(cfg)` bytes.
+- `OLED_DrawBitmapRect` length must match rectangle bytes:
+  `(column_end - column_start + 1) * (page_end - page_start + 1)`.
 
 See [documentation.md](documentation.md) for complete API details.
