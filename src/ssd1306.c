@@ -17,10 +17,6 @@ static uint8_t oled_is_valid_config(const OLED_Config *cfg){
         return 0U;
     }
 
-    if ((cfg->width > 128U) || (cfg->height > 64U)){
-        return 0U;
-    }
-
     if (cfg->bus_type == OLED_BUS_I2C){
         return (cfg->transport.i2c.send_fn != NULL) ? 1U : 0U;
     }
