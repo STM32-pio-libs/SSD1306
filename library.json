@@ -1,6 +1,6 @@
 {
   "name": "STM32-SSD1306",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Hardware-agnostic SSD1306 OLED driver for STM32 (STM32Cube HAL) with I2C and SPI transport callbacks.",
   "keywords": "stm32, I2C, LCD, SPI, OLED, SSD1306",
   "repository":
