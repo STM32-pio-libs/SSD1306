@@ -101,31 +101,49 @@ static int32_t oled_write_data(const OLED_Config *cfg, const uint8_t *data, size
     return OLED_ERR_INVALID_ARG;
 }
 
-static int32_t oled_set_full_window(const OLED_Config *cfg)
+static int32_t oled_set_window(const OLED_Config *cfg,
+                               uint8_t column_start,
+                               uint8_t column_end,
+                               uint8_t page_start,
+                               uint8_t page_end)
 {
-    uint8_t pages = (uint8_t)(cfg->height / 8U);
-
     if (oled_write_command(cfg, 0x21U) != OLED_OK){ /* Set column address */
         return OLED_ERR_IO;
     }
-    if (oled_write_command(cfg, 0x00U) != OLED_OK){
+    if (oled_write_command(cfg, column_start) != OLED_OK){
         return OLED_ERR_IO;
     }
-    if (oled_write_command(cfg, (uint8_t)(cfg->width - 1U)) != OLED_OK){
+    if (oled_write_command(cfg, column_end) != OLED_OK){
         return OLED_ERR_IO;
     }
 
     if (oled_write_command(cfg, 0x22U) != OLED_OK){ /* Set page address */
         return OLED_ERR_IO;
     }
-    if (oled_write_command(cfg, 0x00U) != OLED_OK){
+    if (oled_write_command(cfg, page_start) != OLED_OK){
         return OLED_ERR_IO;
     }
-    if (oled_write_command(cfg, (uint8_t)(pages - 1U)) != OLED_OK){
+    if (oled_write_command(cfg, page_end) != OLED_OK){
         return OLED_ERR_IO;
     }
 
     return OLED_OK;
+}
+
+static int32_t oled_set_full_window(const OLED_Config *cfg)
+{
+    uint16_t pages;
+
+    if ((cfg->width == 0U) || (cfg->width > 256U)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    pages = (uint16_t)(cfg->height / 8U);
+    if ((pages == 0U) || (pages > 256U)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_set_window(cfg, 0U, (uint8_t)(cfg->width - 1U), 0U, (uint8_t)(pages - 1U));
 }
 
 int32_t OLED_Init(const OLED_Config *cfg){
@@ -175,7 +193,7 @@ int32_t OLED_Fill(const OLED_Config *cfg, uint8_t pattern){
     }
 
     if (oled_set_full_window(cfg) != OLED_OK){
-        return OLED_ERR_IO;
+        return OLED_ERR_INVALID_ARG;
     }
 
     memset(payload, pattern, sizeof(payload));
@@ -196,6 +214,72 @@ int32_t OLED_Clear(const OLED_Config *cfg){
     return OLED_Fill(cfg, 0x00U);
 }
 
+int32_t OLED_DisplayOn(const OLED_Config *cfg, uint8_t on){
+    if (oled_is_valid_config(cfg) == 0U){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_write_command(cfg, (on != 0U) ? 0xAFU : 0xAEU);
+}
+
+int32_t OLED_SetInvert(const OLED_Config *cfg, uint8_t invert){
+    if (oled_is_valid_config(cfg) == 0U){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_write_command(cfg, (invert != 0U) ? 0xA7U : 0xA6U);
+}
+
+int32_t OLED_SetEntireDisplayOn(const OLED_Config *cfg, uint8_t enable){
+    if (oled_is_valid_config(cfg) == 0U){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_write_command(cfg, (enable != 0U) ? 0xA5U : 0xA4U);
+}
+
+int32_t OLED_SetContrast(const OLED_Config *cfg, uint8_t contrast){
+    if (oled_is_valid_config(cfg) == 0U){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    if (oled_write_command(cfg, 0x81U) != OLED_OK){
+        return OLED_ERR_IO;
+    }
+
+    return oled_write_command(cfg, contrast);
+}
+
+int32_t OLED_SetAddressWindow(const OLED_Config *cfg,
+                              uint8_t column_start,
+                              uint8_t column_end,
+                              uint8_t page_start,
+                              uint8_t page_end)
+{
+    uint16_t pages;
+
+    if (oled_is_valid_config(cfg) == 0U){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    pages = (uint16_t)(cfg->height / 8U);
+    if ((cfg->width == 0U) || (cfg->width > 256U) ||
+        (pages == 0U) || (pages > 256U))
+    {
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    if ((column_start > column_end) || (page_start > page_end)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    if ((column_end >= cfg->width) || (page_end >= pages)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_set_window(cfg, column_start, column_end, page_start, page_end);
+}
+
 int32_t OLED_DrawBitmap(const OLED_Config *cfg, const uint8_t *bitmap, size_t length){
     if ((oled_is_valid_config(cfg) == 0U) || (bitmap == NULL)){
         return OLED_ERR_INVALID_ARG;
@@ -206,7 +290,42 @@ int32_t OLED_DrawBitmap(const OLED_Config *cfg, const uint8_t *bitmap, size_t le
     }
 
     if (oled_set_full_window(cfg) != OLED_OK){
-        return OLED_ERR_IO;
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    return oled_write_data(cfg, bitmap, length);
+}
+
+int32_t OLED_DrawBitmapRect(const OLED_Config *cfg,
+                            const uint8_t *bitmap,
+                            size_t length,
+                            uint8_t column_start,
+                            uint8_t column_end,
+                            uint8_t page_start,
+                            uint8_t page_end)
+{
+    size_t expected_length;
+    uint16_t columns;
+    uint16_t pages;
+
+    if ((oled_is_valid_config(cfg) == 0U) || (bitmap == NULL)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    if ((column_start > column_end) || (page_start > page_end)){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    columns = (uint16_t)((uint16_t)column_end - (uint16_t)column_start + 1U);
+    pages = (uint16_t)((uint16_t)page_end - (uint16_t)page_start + 1U);
+    expected_length = (size_t)columns * (size_t)pages;
+
+    if (length != expected_length){
+        return OLED_ERR_INVALID_ARG;
+    }
+
+    if (OLED_SetAddressWindow(cfg, column_start, column_end, page_start, page_end) != OLED_OK){
+        return OLED_ERR_INVALID_ARG;
     }
 
     return oled_write_data(cfg, bitmap, length);

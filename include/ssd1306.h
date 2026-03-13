@@ -50,6 +50,15 @@ size_t OLED_BufferSize(const OLED_Config *cfg);
 int32_t OLED_Init(const OLED_Config *cfg);
 int32_t OLED_Clear(const OLED_Config *cfg);
 int32_t OLED_Fill(const OLED_Config *cfg, uint8_t pattern);
+int32_t OLED_DisplayOn(const OLED_Config *cfg, uint8_t on);
+int32_t OLED_SetInvert(const OLED_Config *cfg, uint8_t invert);
+int32_t OLED_SetEntireDisplayOn(const OLED_Config *cfg, uint8_t enable);
+int32_t OLED_SetContrast(const OLED_Config *cfg, uint8_t contrast);
+int32_t OLED_SetAddressWindow(const OLED_Config *cfg,
+                              uint8_t column_start,
+                              uint8_t column_end,
+                              uint8_t page_start,
+                              uint8_t page_end);
 
 /*
  * Bitmap format:
@@ -58,6 +67,13 @@ int32_t OLED_Fill(const OLED_Config *cfg, uint8_t pattern);
  * - Each byte is a vertical column of 8 pixels in a page (LSB at top)
  */
 int32_t OLED_DrawBitmap(const OLED_Config *cfg, const uint8_t *bitmap, size_t length);
+int32_t OLED_DrawBitmapRect(const OLED_Config *cfg,
+                            const uint8_t *bitmap,
+                            size_t length,
+                            uint8_t column_start,
+                            uint8_t column_end,
+                            uint8_t page_start,
+                            uint8_t page_end);
 
 /*
  * GFX flush callback adapter.
